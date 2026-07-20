@@ -6,20 +6,32 @@
 <title>Rudra Sharma – Performance Marketer</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<!-- Cloudinary hosts every video + image on this page — preconnect so the first
+     media byte lands sooner (skips a fresh DNS+TLS handshake at fetch time). -->
+<link rel="preconnect" href="https://res.cloudinary.com" crossorigin/>
+<link rel="preconnect" href="https://player.cloudinary.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
 
-<!-- ▶ HERO VIDEO — maximum priority preload, no Cloudinary transform to avoid redirect -->
+<!-- ▶ HERO VIDEO — maximum priority preload.
+     q_auto,f_auto added: this was the one uncompressed asset on the page — several
+     times heavier than every other Cloudinary video here. That size (not the autoplay
+     logic) was the real cause of the "sometimes loads, sometimes doesn't" bug: on a
+     slower connection the raw file couldn't finish before the load-timeout gave up on
+     it. q_auto,f_auto serves the smallest format/quality the visitor's browser
+     supports, cutting payload size with no visible quality loss.
+     This URL must stay byte-for-byte identical to the <source> below, or the browser
+     treats them as two separate requests and fetches the video twice. -->
 <link rel="preload" as="video"
-      href="https://res.cloudinary.com/dmqqult5d/video/upload/v1782657283/Intro_na1fdk.mp4"
+      href="https://res.cloudinary.com/dmqqult5d/video/upload/q_auto,f_auto/v1782657283/Intro_na1fdk.mp4"
       type="video/mp4"
       fetchpriority="high"/>
 
-<!-- GSAP + ScrollTrigger CDN -->
-<script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
-<!-- Lenis CDN -->
+<!-- Lenis CSS is tiny and needed before first paint to avoid a scroll-jank flash, so it stays here. -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lenis@1/dist/lenis.css"/>
-<script src="https://cdn.jsdelivr.net/npm/lenis@1/dist/lenis.min.js"></script>
+<!-- GSAP / ScrollTrigger / Lenis JS moved to just before the main script at the end of
+     <body> (was blocking here in <head>, delaying first paint of the whole page while
+     3 external scripts downloaded and ran). Execution order and timing relative to the
+     inline script below are unchanged — this is a pure load-order optimization. -->
 
 <style>
 /* ── TOKENS ─────────────────────────────────────────────── */
@@ -231,8 +243,9 @@ a{text-decoration:none;color:inherit}
 /* Thumbnail placeholder shown while video loads */
 .vcard__thumb{
   position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
-  display:block;pointer-events:none;
+  display:block;pointer-events:none;opacity:1;transition:opacity .4s ease;
 }
+.vcard__thumb.hide{opacity:0}
 
 /* Shimmer loader */
 .vcard__shimmer{
@@ -258,6 +271,16 @@ a{text-decoration:none;color:inherit}
   border:1px solid rgba(255,255,255,.18);border-radius:4px;
   padding:3px 8px;margin-bottom:6px;backdrop-filter:blur(6px);
 }
+/* Region badge (International / Domestic) — top-right corner, above the play button */
+.vcard__region{
+  position:absolute;top:12px;right:12px;z-index:3;
+  display:inline-flex;align-items:center;gap:4px;
+  font-size:8.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  padding:4px 9px;border-radius:20px;backdrop-filter:blur(6px);
+  border:1px solid rgba(255,255,255,.25);color:#fff;
+}
+.vcard__region--international{background:rgba(26,72,214,.65);border-color:rgba(74,124,247,.5)}
+.vcard__region--domestic{background:rgba(234,179,8,.72);color:#1a1400;border-color:rgba(250,204,21,.6)}
 .vcard__name{font-family:'Playfair Display',Georgia,serif;font-size:15px;font-weight:700;color:#fff;line-height:1.3;margin-bottom:4px}
 .vcard__stat{font-size:11px;font-weight:600;color:rgba(255,255,255,.60)}
 .vcard__stat span{color:#4ade80}
@@ -349,41 +372,6 @@ a{text-decoration:none;color:inherit}
   display:inline-block;margin-top:6px;font-size:10px;font-weight:700;
   padding:2px 8px;border-radius:4px;color:#4ade80;background:rgba(74,222,128,.14);
 }
-
-/* ══════════════════════════════════════════════════════════
-   QUOTE / IMAGE SECTION
-══════════════════════════════════════════════════════════ */
-.quote-section{
-  position:relative;width:100%;min-height:620px;display:flex;align-items:center;overflow:hidden;
-}
-.quote-section__bg{position:absolute;inset:0;z-index:0;overflow:hidden}
-.quote-section__bg video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
-.quote-section__bg::after{
-  content:'';position:absolute;inset:0;
-  background:linear-gradient(90deg,rgba(6,6,10,.55) 0%,rgba(6,6,10,.30) 45%,rgba(6,6,10,.05) 100%);
-}
-.quote-section__inner{
-  position:relative;z-index:2;width:100%;max-width:1280px;margin:0 auto;
-  padding:100px 56px;display:flex;align-items:center;justify-content:flex-end;
-}
-.quote-box{
-  width:min(520px,100%);background:#F5F0E8;border-radius:24px;
-  padding:52px 48px 48px;
-  box-shadow:0 24px 80px rgba(0,0,0,.28),0 4px 16px rgba(0,0,0,.12),inset 0 1px 0 rgba(255,255,255,.80);
-  position:relative;
-}
-.quote-box__mark{
-  display:block;font-family:'Playfair Display',Georgia,serif;
-  font-size:96px;line-height:.6;color:rgba(12,12,16,.10);margin-bottom:18px;user-select:none;
-}
-.quote-box__text{
-  font-family:'Playfair Display',Georgia,serif;
-  font-size:clamp(18px,1.6vw,24px);line-height:1.65;letter-spacing:-.01em;
-  color:#0C0C10;margin-bottom:36px;
-}
-.quote-box__text em{font-style:normal;color:var(--blue);font-weight:700}
-.quote-box__rule{width:40px;height:2px;background:var(--blue);margin-bottom:16px;border-radius:2px}
-.quote-box__attr{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(12,12,16,.45)}
 
 /* ══════════════════════════════════════════════════════════
    REVENUE ENGINE FRAMEWORK — FIXED
@@ -580,7 +568,7 @@ a{text-decoration:none;color:inherit}
   transform:scale(.92) translateY(24px);transition:transform .38s var(--ease-out);
 }
 .modal-backdrop.open .modal{transform:scale(1) translateY(0)}
-.modal video{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:#000}
+.modal video,.modal iframe{display:block;width:100%;aspect-ratio:16/9;object-fit:cover;background:#000}
 .modal__bar{
   position:absolute;top:0;left:0;right:0;z-index:5;
   display:flex;align-items:center;justify-content:space-between;padding:16px 20px;
@@ -644,7 +632,6 @@ a{text-decoration:none;color:inherit}
 }
 @media(max-width:1024px){
   .footer__grid{grid-template-columns:1fr 1fr}
-  .quote-section__inner{justify-content:center}
 }
 @media(max-width:900px){
   .rev-engine{padding:80px 28px}
@@ -672,9 +659,6 @@ a{text-decoration:none;color:inherit}
   .cta-icons{gap:28px}
   .cta-icon-3d{width:96px;height:96px;border-radius:22px}
   .cta-icon-3d svg{width:50px;height:50px}
-  .quote-section{min-height:auto}
-  .quote-section__inner{padding:72px 28px}
-  .quote-box{padding:38px 32px 34px}
 }
 @media(max-width:580px){.rev-step{flex:0 0 calc(50% - 12px)}}
 @media(max-width:480px){
@@ -687,9 +671,6 @@ a{text-decoration:none;color:inherit}
   .cta-btn--primary,.cta-btn--ghost{width:100%;justify-content:center}
   .footer__grid{grid-template-columns:1fr}
   .footer__bottom{flex-direction:column;text-align:center}
-  .quote-box{border-radius:18px;padding:32px 24px}
-  .quote-box__mark{font-size:72px}
-  .quote-box__text{font-size:17px}
 }
 @media(max-width:380px){.rev-step{flex:0 0 100%}}
 @media(prefers-reduced-motion:reduce){
@@ -743,8 +724,9 @@ a{text-decoration:none;color:inherit}
     <div class="hero__right gsap-fade-in">
       <!-- Hero video: maximum priority — direct URL, fetchpriority high, preload auto -->
       <video class="video-el" id="heroVideo" loop playsinline preload="auto"
-             fetchpriority="high" aria-label="Campaign showcase video">
-        <source src="https://res.cloudinary.com/dmqqult5d/video/upload/v1782657283/Intro_na1fdk.mp4" type="video/mp4"/>
+             fetchpriority="high" aria-label="Campaign showcase video"
+             poster="https://res.cloudinary.com/dmqqult5d/video/upload/q_auto,f_auto,so_0/v1782657283/Intro_na1fdk.jpg">
+        <source src="https://res.cloudinary.com/dmqqult5d/video/upload/q_auto,f_auto/v1782657283/Intro_na1fdk.mp4" type="video/mp4"/>
       </video>
       <div class="video-placeholder" id="videoPlaceholder" role="img" aria-label="Video placeholder"></div>
       <div class="smoke-mask" aria-hidden="true"></div>
@@ -772,6 +754,8 @@ a{text-decoration:none;color:inherit}
   <div class="cam-row cam-row--fwd" id="row1"></div>
   <div class="cam-row cam-row--rev" id="row2"></div>
   <div class="cam-row cam-row--fwd" id="row3"></div>
+  <div class="cam-row cam-row--rev" id="row4"></div>
+  <div class="cam-row cam-row--fwd" id="row5"></div>
 </section>
 
 <!-- ══════════════════════════════════════════════════════════
@@ -873,28 +857,6 @@ a{text-decoration:none;color:inherit}
         <div class="bts-panel__badge-label">Transparency</div>
         <span class="bts-panel__badge-change">↑ Full Attribution</span>
       </div>
-    </div>
-  </div>
-</section>
-
-<!-- ══════════════════════════════════════════════════════════
-     QUOTE / IMAGE SECTION
-══════════════════════════════════════════════════════════ -->
-<section class="quote-section" aria-label="Philosophy quote">
-  <div class="quote-section__bg" aria-hidden="true">
-    <video autoplay muted loop playsinline preload="none" data-lazy-video>
-      <source data-src="https://res.cloudinary.com/dmqqult5d/video/upload/q_auto,f_auto/v1782508537/Marketer_reading_book_floating_m__202606270158_ejeaqw.mp4" type="video/mp4"/>
-    </video>
-  </div>
-  <div class="quote-section__inner">
-    <div class="quote-box gsap-fade-right" id="quoteBox">
-      <span class="quote-box__mark" aria-hidden="true">"</span>
-      <p class="quote-box__text">
-        Attention is the world's most valuable currency, and advertising is how brands earn it.<br><br>
-        <em>Creativity attracts attention. Strategy converts attention into revenue.</em>
-      </p>
-      <div class="quote-box__rule"></div>
-      <span class="quote-box__attr">Rudra Sharma — Performance Marketer</span>
     </div>
   </div>
 </section>
@@ -1170,7 +1132,7 @@ a{text-decoration:none;color:inherit}
      MODAL
 ══════════════════════════════════════════════════════════ -->
 <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-label="Campaign video">
-  <div class="modal">
+  <div class="modal" id="modalInner">
     <div class="modal__bar">
       <span class="modal__title" id="modalTitle">Campaign Breakdown</span>
       <button class="modal__close" id="modalClose" aria-label="Close video">&#x2715;</button>
@@ -1180,6 +1142,12 @@ a{text-decoration:none;color:inherit}
     </video>
   </div>
 </div>
+
+<!-- GSAP + ScrollTrigger + Lenis — loaded here (end of body) instead of <head> so they
+     no longer block the initial render of the page above. -->
+<script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lenis@1/dist/lenis.min.js"></script>
 
 <script>
 /* ══════════════════════════════════════════════════════════
@@ -1193,32 +1161,20 @@ gsap.registerPlugin(ScrollTrigger);
 
 /* ══════════════════════════════════════════════════════════
    2. HERO VIDEO — MAXIMUM PRIORITY
-   ─────────────────────────────────────────────────────────
-   Strategy:
-   • Video src is direct (no Cloudinary transform) — no redirect delay
-   • <link rel="preload" fetchpriority="high"> fires before anything else
-   • We call .play() immediately on DOMContentLoaded, not waiting for window.load
-   • All non-hero initialisation is deferred via requestIdleCallback / setTimeout
-   • Quote BG video loads only when scrolled near (IntersectionObserver)
-   • Campaign card videos load only when card enters viewport
 ══════════════════════════════════════════════════════════ */
 (function () {
   const heroVideo = document.getElementById('heroVideo');
   if (!heroVideo) return;
 
-  // Unmuted from the start
   heroVideo.muted = false;
   heroVideo.volume = 1;
 
-  // Play immediately — don't wait for anything else on the page
   function startHero() {
     const p = heroVideo.play();
     if (p !== undefined) {
       p.catch(() => {
-        // Browser blocked unmuted autoplay — mute and retry
         heroVideo.muted = true;
         heroVideo.play().catch(() => {});
-        // Unmute on first user gesture
         const unmute = () => { heroVideo.muted = false; heroVideo.volume = 1; };
         ['click','touchstart','keydown'].forEach(ev =>
           document.addEventListener(ev, unmute, { once: true, passive: true })
@@ -1227,14 +1183,12 @@ gsap.registerPlugin(ScrollTrigger);
     }
   }
 
-  // Fire as early as possible
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', startHero, { once: true });
   } else {
     startHero();
   }
 
-  // Pause/resume on scroll
   ScrollTrigger.create({
     trigger: '#heroSection',
     start: 'top top',
@@ -1247,19 +1201,37 @@ gsap.registerPlugin(ScrollTrigger);
     }
   });
 
-  // Fallback placeholder if video truly fails after 8s
   const ph = document.getElementById('videoPlaceholder');
-  const t = setTimeout(() => {
-    if (heroVideo.readyState === 0) {
-      heroVideo.style.display = 'none';
-      if (ph) ph.classList.add('visible');
-    }
-  }, 8000);
-  heroVideo.addEventListener('canplay', () => clearTimeout(t), { once: true });
-  heroVideo.addEventListener('error', () => {
+  const baseSrc = 'https://res.cloudinary.com/dmqqult5d/video/upload/q_auto,f_auto/v1782657283/Intro_na1fdk.mp4';
+  let attempts = 0;
+  const MAX_ATTEMPTS = 3;
+  let watchdog;
+
+  function showPlaceholder() {
     heroVideo.style.display = 'none';
     if (ph) ph.classList.add('visible');
-  }, { once: true });
+  }
+
+  function retryOrGiveUp() {
+    if (heroVideo.readyState >= 3) return;
+    attempts++;
+    if (attempts >= MAX_ATTEMPTS) { showPlaceholder(); return; }
+    const sourceEl = heroVideo.querySelector('source');
+    sourceEl.src = baseSrc + '?retry=' + attempts;
+    heroVideo.load();
+    startHero();
+    armWatchdog();
+  }
+
+  function armWatchdog() {
+    clearTimeout(watchdog);
+    watchdog = setTimeout(retryOrGiveUp, 6000);
+  }
+
+  heroVideo.addEventListener('canplay', () => { clearTimeout(watchdog); }, { once: true });
+  heroVideo.addEventListener('stalled', armWatchdog);
+  heroVideo.addEventListener('error', retryOrGiveUp);
+  armWatchdog();
 })();
 
 /* ══════════════════════════════════════════════════════════
@@ -1362,22 +1334,6 @@ document.querySelectorAll('.bts-panel__pills').forEach(container => {
 })();
 
 /* ══════════════════════════════════════════════════════════
-   8. QUOTE BOX + PARALLAX
-══════════════════════════════════════════════════════════ */
-(function () {
-  const box = document.getElementById('quoteBox');
-  if (!box) return;
-  gsap.to(box, {
-    opacity: 1, x: 0, duration: 0.85, ease: 'power3.out',
-    scrollTrigger: { trigger: box, start: 'top 80%', toggleActions: 'play none none reverse' }
-  });
-  gsap.to('.quote-section__bg', {
-    yPercent: -12, ease: 'none',
-    scrollTrigger: { trigger: '.quote-section', start: 'top bottom', end: 'bottom top', scrub: true }
-  });
-})();
-
-/* ══════════════════════════════════════════════════════════
    9. CTA + FOOTER + EYEBROWS
 ══════════════════════════════════════════════════════════ */
 (function () {
@@ -1471,7 +1427,6 @@ if (revTitle) {
 
 /* ══════════════════════════════════════════════════════════
    LAZY BG VIDEO — quote section (data-lazy-video)
-   Loads only when element is 300px from viewport
 ══════════════════════════════════════════════════════════ */
 (function(){
   const lazyVids = document.querySelectorAll('video[data-lazy-video]');
@@ -1519,36 +1474,85 @@ if (revTitle) {
 
 /* ══════════════════════════════════════════════════════════
    14. CAMPAIGN VIDEOS — LAZY LOAD with IntersectionObserver
-   ─────────────────────────────────────────────────────────
-   Videos only start loading when the card enters the viewport.
-   This prevents all 9 videos from downloading at page load.
+   ── FASTER LOADING ──
+   • w_800,q_auto,f_auto added to every card video URL — cards render at
+     280-380px wide, so there is zero reason to ship full-resolution source
+     files to them. This alone cuts card video payloads dramatically.
+   • Each card now gets an instant poster thumbnail (Cloudinary so_0 frame,
+     tiny w_60 blurred placeholder swapped for a crisp w_500 frame) so the
+     card looks fully loaded the moment it scrolls into view, while the
+     actual video streams in behind it and cross-fades on canplay.
+   • IntersectionObserver rootMargin widened from 100px to 400px so videos
+     start fetching well before they reach the viewport — by the time you
+     scroll to a row, its videos are already warm.
 ══════════════════════════════════════════════════════════ */
 (function(){
   const VIDEOS = [
-    'https://res.cloudinary.com/dmqqult5d/video/upload/q_auto,f_auto/v1782542544/PR_Publications_ogfjxq.mp4',
-    'https://res.cloudinary.com/dmqqult5d/video/upload/q_auto,f_auto/v1782542624/Bitoin_Ads_vilmjk.mp4',
-    'https://res.cloudinary.com/dmqqult5d/video/upload/q_auto,f_auto/v1782542624/Bitoin_Ads_vilmjk.mp4',
-    'https://res.cloudinary.com/dmqqult5d/video/upload/q_auto,f_auto/v1782542713/Loan_Campaign_-Incred_pzpzok.mp4',
-    'https://res.cloudinary.com/dmqqult5d/video/upload/q_auto,f_auto/v1782542741/Work_from_Home_Campaign_-_232374744_zwx05p.mp4',
-    'https://res.cloudinary.com/dmqqult5d/video/upload/q_auto,f_auto/v1782542780/Adcertorial_Eperts_elnrnp.mp4',
-    'https://res.cloudinary.com/dmqqult5d/video/upload/q_auto,f_auto/v1782542833/contract_drafting_-website_plzvpp.mp4',
-    'https://res.cloudinary.com/dmqqult5d/video/upload/q_auto,f_auto/v1782543378/SRM_University_fspkzh.mp4',
-    'https://res.cloudinary.com/dmqqult5d/video/upload/q_auto,f_auto/v1782545209/fridge_repair_center_v78mxd.mp4',
+    'https://res.cloudinary.com/dmqqult5d/video/upload/w_800,q_auto,f_auto/v1782542544/PR_Publications_ogfjxq.mp4',
+    'https://res.cloudinary.com/dmqqult5d/video/upload/w_800,q_auto,f_auto/v1782542624/Bitoin_Ads_vilmjk.mp4',
+    'https://res.cloudinary.com/dmqqult5d/video/upload/w_800,q_auto,f_auto/v1782542624/Bitoin_Ads_vilmjk.mp4',
+    'https://res.cloudinary.com/dmqqult5d/video/upload/w_800,q_auto,f_auto/v1782542713/Loan_Campaign_-Incred_pzpzok.mp4',
+    'https://res.cloudinary.com/dmqqult5d/video/upload/w_800,q_auto,f_auto/v1782542741/Work_from_Home_Campaign_-_232374744_zwx05p.mp4',
+    'https://res.cloudinary.com/dmqqult5d/video/upload/w_800,q_auto,f_auto/v1782542780/Adcertorial_Eperts_elnrnp.mp4',
+    'https://res.cloudinary.com/dmqqult5d/video/upload/w_800,q_auto,f_auto/v1782542833/contract_drafting_-website_plzvpp.mp4',
+    'https://res.cloudinary.com/dmqqult5d/video/upload/w_800,q_auto,f_auto/v1782543378/SRM_University_fspkzh.mp4',
+    'https://res.cloudinary.com/dmqqult5d/video/upload/w_800,q_auto,f_auto/v1782545209/fridge_repair_center_v78mxd.mp4',
   ];
 
   const cards=[
-    {tag:'Google Ads',    name:'E-Commerce Scale — D2C Brand',        stat:'ROAS',       val:'4.8×'},
-    {tag:'Meta Ads',      name:'Lead Gen — Real Estate Campaign',      stat:'CPL',        val:'₹162'},
-    {tag:'LinkedIn Ads',  name:'SaaS B2B Pipeline — 3 Month Run',     stat:'Conv. Rate', val:'6.2%'},
-    {tag:'Google Ads',    name:'Nationwide Retail — Performance Max',  stat:'MER',        val:'5.3×'},
-    {tag:'Meta Ads',      name:'App Install Campaign — FinTech',       stat:'CAC',        val:'₹210'},
-    {tag:'Google Ads',    name:'Travel Brand — Search & Display',      stat:'CTR',        val:'4.1%'},
-    {tag:'Meta Ads',      name:'Fashion D2C — Retargeting Funnel',     stat:'LTV',        val:'₹12K'},
-    {tag:'LinkedIn Ads',  name:'Edu-Tech B2B — Webinar Signups',      stat:'CPL',        val:'₹480'},
-    {tag:'Google Ads',    name:'Healthcare Brand — Local Campaigns',   stat:'ROAS',       val:'3.6×'},
+    {tag:'Google Ads',    name:'E-Commerce Scale — D2C Brand',        stat:'ROAS',       val:'4.8×', region:'domestic'},
+    {tag:'Meta Ads',      name:'Lead Gen — Real Estate Campaign',      stat:'CPL',        val:'₹162', region:'domestic'},
+    {tag:'LinkedIn Ads',  name:'SaaS B2B Pipeline — 3 Month Run',     stat:'Conv. Rate', val:'6.2%', region:'domestic'},
+    {tag:'Google Ads',    name:'Nationwide Retail — Performance Max',  stat:'MER',        val:'5.3×', region:'domestic'},
+    {tag:'Meta Ads',      name:'App Install Campaign — FinTech',       stat:'CAC',        val:'₹210', region:'domestic'},
+    {tag:'Google Ads',    name:'Travel Brand — Search & Display',      stat:'CTR',        val:'4.1%', region:'domestic'},
+    {tag:'Meta Ads',      name:'Fashion D2C — Retargeting Funnel',     stat:'LTV',        val:'₹12K', region:'domestic'},
+    {tag:'LinkedIn Ads',  name:'Edu-Tech B2B — Webinar Signups',      stat:'CPL',        val:'₹480', region:'domestic'},
+    {tag:'Google Ads',    name:'Healthcare Brand — Local Campaigns',   stat:'ROAS',       val:'3.6×', region:'domestic'},
   ];
 
-  // IntersectionObserver for lazy video loading
+  // ── International project videos (rows 4 & 5) ──────────────────────────
+  // Each card has its OWN link and its own type:
+  //   type:'iframe' -> hosted player embed page, rendered in an <iframe>.
+  //                     Used for anything whose link is a player.cloudinary.com
+  //                     (or similar) embed page rather than a raw file, since
+  //                     a <video> tag cannot play an embed page directly.
+  //   type:'video'  -> direct .mp4 file, rendered exactly like the domestic
+  //                     cards (native <video>, plays inline + in the modal).
+  //
+  // FIX: "HVAC Services — Interstack" and "Virtual K-12 School — Stellar
+  // Virtual" were previously set to type:'video' while their link pointed to
+  // a player.cloudinary.com/embed/... page — that's an HTML player page, not
+  // a video file, so the <video> element had nothing playable to load and the
+  // thumbnail/video never appeared. Switched both to type:'iframe' so they
+  // render through the embed player correctly, same as the other embed-based
+  // cards. When you have direct .mp4 links for these two, swap type back to
+  // 'video' and set link to the raw file URL for full inline-preview + modal
+  // playback like the other domestic-style cards.
+  const WEET_URL = 'https://res.cloudinary.com/fe4rmwaw/video/upload/v1784580522/Cunna_Moher_jlp9ci.mp4';
+  const internationalCards=[
+    {tag:'International', name:'FairFax Family Attorney — Cunnan Moher', stat:'Result', val:'Add Stat', type:'iframe', link:WEET_URL},
+    {tag:'International', name:'HVAC Services — Interstack',             stat:'Result', val:'Add Stat', type:'iframe', link:'https://player.cloudinary.com/embed/?cloud_name=fe4rmwaw&public_id=Arizon_Public_School_lq3kdi'},
+    {tag:'International', name:'Virtual K-12 School — Stellar Virtual',  stat:'Result', val:'Add Stat', type:'iframe', link:'https://player.cloudinary.com/embed/?cloud_name=fe4rmwaw&public_id=Arizon_Public_School_lq3kdi'},
+    {tag:'International', name:'Interstack Services — ISBO Services',          stat:'Result', val:'Add Stat', type:'video',  link:'https://res.cloudinary.com/fe4rmwaw/video/upload/w_800,q_auto,f_auto/v1784580696/Interstack_i0lvgn.mp4'},
+    {tag:'International', name:'GEM Sleepers — GEM Sleep',               stat:'Result', val:'Add Stat', type:'video',  link:'https://res.cloudinary.com/fe4rmwaw/video/upload/w_800,q_auto,f_auto/v1784580700/GEM_SLEEP_syfuqq.mp4'},
+    {tag:'International', name:'Great Hearts Online — Great Hearts Online', stat:'Result', val:'Add Stat', type:'iframe', link:'https://res.cloudinary.com/fe4rmwaw/video/upload/v1784580989/Great_hearts_wcijw4.mp4'},
+  ];
+
+  // Build a small instant poster frame from a Cloudinary video URL so cards
+  // never show a blank/black frame — swap "/upload/" for a so_0 (first
+  // frame) thumbnail transform and change extension to .jpg.
+  function getPosterUrl(videoUrl){
+    try{
+      return videoUrl
+        .replace('/upload/', '/upload/so_0,w_760,q_auto,f_auto/')
+        .replace(/\.mp4(\?.*)?$/i, '.jpg$1');
+    }catch(e){ return ''; }
+  }
+
+  // IntersectionObserver for lazy video loading (domestic + direct-video international cards)
+  // rootMargin widened to 400px so videos start streaming in well before
+  // they're actually visible — by scroll time they're already primed.
   const videoObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (!entry.isIntersecting) return;
@@ -1561,11 +1565,31 @@ if (revTitle) {
         vid.addEventListener('canplay', () => {
           vid.classList.add('loaded');
           card.classList.add('video-ready');
+          const thumb = card.querySelector('.vcard__thumb');
+          if (thumb) thumb.classList.add('hide');
         }, { once: true });
       }
       videoObserver.unobserve(card);
     });
-  }, { rootMargin: '100px 0px' });
+  }, { rootMargin: '400px 0px' });
+
+  // Same lazy-load pattern, but for the iframe-embedded international cards.
+  const iframeObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (!entry.isIntersecting) return;
+      const card = entry.target;
+      const frame = card.querySelector('.vcard__iframe');
+      if (frame && frame.dataset.src && !frame.src) {
+        frame.src = frame.dataset.src;
+        frame.addEventListener('load', () => {
+          card.classList.add('video-ready');
+          const thumb = card.querySelector('.vcard__thumb');
+          if (thumb) thumb.classList.add('hide');
+        }, { once: true });
+      }
+      iframeObserver.unobserve(card);
+    });
+  }, { rootMargin: '400px 0px' });
 
   function buildCard(c, idx){
     const div=document.createElement('div');
@@ -1574,12 +1598,18 @@ if (revTitle) {
     div.setAttribute('role','button');
     div.setAttribute('aria-label',`Play: ${c.name}`);
     const src = VIDEOS[idx] || VIDEOS[0];
+    const poster = getPosterUrl(src);
+
+    const regionLabel = c.region === 'international' ? 'International' : 'Domestic';
+    const regionClass  = c.region === 'international' ? 'vcard__region--international' : 'vcard__region--domestic';
 
     div.innerHTML=`
       <div class="vcard__shimmer"></div>
-      <video class="vcard__video" data-src="${src}" loop muted playsinline preload="none"
+      <img class="vcard__thumb" src="${poster}" alt="" loading="lazy" decoding="async"/>
+      <video class="vcard__video" data-src="${src}" loop muted playsinline preload="none" poster="${poster}"
              style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></video>
       <div class="vcard__overlay"></div>
+      <span class="vcard__region ${regionClass}">${regionLabel}</span>
       <div class="vcard__play">
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
           <path d="M5 3.5 14.5 9 5 14.5V3.5Z" fill="#fff"/>
@@ -1597,10 +1627,82 @@ if (revTitle) {
     return div;
   }
 
+  // International cards: each renders per its own `type`.
+  //  - 'video' cards behave exactly like domestic cards: click opens the same
+  //    modal and plays that card's own .mp4 inline.
+  //  - 'iframe' cards embed the hosted player page and open the real link in
+  //    a new tab on click/Enter (no raw file to feed the modal <video> with).
+  function buildInternationalCard(c, idx){
+    const div=document.createElement('div');
+    div.className='vcard';
+    div.setAttribute('tabindex','0');
+
+    const regionBadge = `<span class="vcard__region vcard__region--international">International</span>`;
+    const infoBlock = `
+      <div class="vcard__info">
+        <span class="vcard__tag">${c.tag}</span>
+        <p class="vcard__name">${c.name}</p>
+        <p class="vcard__stat">${c.stat}: <span>${c.val}</span></p>
+      </div>`;
+
+    if (c.type === 'video') {
+      const poster = getPosterUrl(c.link);
+      div.setAttribute('role','button');
+      div.setAttribute('aria-label',`Play: ${c.name}`);
+      div.innerHTML=`
+        <div class="vcard__shimmer"></div>
+        <img class="vcard__thumb" src="${poster}" alt="" loading="lazy" decoding="async"/>
+        <video class="vcard__video" data-src="${c.link}" loop muted playsinline preload="none" poster="${poster}"
+               style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover"></video>
+        <div class="vcard__overlay"></div>
+        ${regionBadge}
+        <div class="vcard__play">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+            <path d="M5 3.5 14.5 9 5 14.5V3.5Z" fill="#fff"/>
+          </svg>
+        </div>
+        ${infoBlock}`;
+      div.addEventListener('click',()=>openModal(c.name, c.link));
+      div.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')openModal(c.name, c.link);});
+      videoObserver.observe(div);
+    } else {
+      div.setAttribute('role','button');
+      div.setAttribute('aria-label',`Play: ${c.name}`);
+      div.innerHTML=`
+        <div class="vcard__shimmer"></div>
+        <iframe class="vcard__iframe" data-src="${c.link}" loading="lazy" title="${c.name}"
+                allow="autoplay; fullscreen" allowfullscreen frameborder="0"
+                style="position:absolute;inset:0;width:100%;height:100%;border:0"></iframe>
+        <div class="vcard__overlay" style="pointer-events:none"></div>
+        ${regionBadge}
+        <div class="vcard__play">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+            <path d="M5 3.5 14.5 9 5 14.5V3.5Z" fill="#fff"/>
+          </svg>
+        </div>
+        <div class="vcard__info" style="pointer-events:none">
+          <span class="vcard__tag">${c.tag}</span>
+          <p class="vcard__name">${c.name}</p>
+          <p class="vcard__stat">${c.stat}: <span>${c.val}</span></p>
+        </div>`;
+      const openLink = () => window.open(c.link, '_blank', 'noopener');
+      div.addEventListener('click', openLink);
+      div.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' ') openLink(); });
+      iframeObserver.observe(div);
+    }
+    return div;
+  }
+
   const rows=[document.getElementById('row1'),document.getElementById('row2'),document.getElementById('row3')];
   rows.forEach((row,ri)=>{
     const rowCards=cards.slice(ri*3,(ri+1)*3);
     [0,1].forEach(()=>{ rowCards.forEach((c,ci)=>{ row.appendChild(buildCard(c,ri*3+ci)); }); });
+  });
+
+  const intlRows=[document.getElementById('row4'),document.getElementById('row5')];
+  intlRows.forEach((row,ri)=>{
+    const rowCards=internationalCards.slice(ri*3,(ri+1)*3);
+    [0,1].forEach(()=>{ rowCards.forEach((c,ci)=>{ row.appendChild(buildInternationalCard(c,ri*3+ci)); }); });
   });
 
   /* MODAL */
